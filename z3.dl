@@ -1,0 +1,20 @@
+/*
+The main problem is that z3 requires a ctx.
+Well, that and 32bit integers
+I could compiler to 64bit mode I guess.
+Question: Better to use C++ api or C api?
+
+I think I may need to use C++ anyway to interface with souffle.
+And it may be easier to implement a Pool of contexts later.
+
+Maybe I should bite the bullet and compile 64 bit mode too.
+*/
+
+.pragma "library" "z3"
+.pragma "library" "z3stubs"
+.type z3_ref = [u : unsigned; l : unsigned]
+
+
+ctx(ctx) :- ctx = Z3_mk_context().
+
+Z3_mk_ref , ctx(ctx)
