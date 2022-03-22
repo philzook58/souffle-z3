@@ -64,6 +64,12 @@ extern "C" {
       return ast_pack;
   }
 
+  Z3_lbool check_sat(Z3_context ctx, Z3_ast ast){
+      Z3_solver s = Z3_mk_solver(ctx);
+      Z3_solver_assert(ctx, s, ast);
+      return Z3_solver_check(ctx,s);
+  }
+
  souffle::RamDomain mycat(souffle::SymbolTable* symbolTable, souffle::RecordTable* recordTable,
         souffle::RamDomain arg1, souffle::RamDomain arg2) {
     assert(symbolTable && "NULL symbol table");

@@ -20,13 +20,16 @@ ctx(ctx) :- ctx = Z3_mk_context().
 Z3_mk_ref , ctx(ctx)
 
 */
+
+// This transitively should be loading Z3.
+.pragma "libraries" "z3stubs"
 #define Z3CTX @myctx()
 #define Z3BOOL(name) @Z3_mk_const(Z3CTX, @Z3_mk_string_symbol(Z3CTX, name), @Z3_mk_bool_sort(Z3CTX))
 
 #define Z3INT(name) @Z3_mk_const(Z3CTX, @Z3_mk_string_symbol(Z3CTX, name), @Z3_mk_int_sort(Z3CTX))
 #define STRING_OF_Z3AST(ast) @Z3_ast_to_string(Z3CTX, ast)
 //.pragma "libraries" "z3"
-.pragma "libraries" "z3stubs"
+
 .type Z3_ctx <: unsigned
 .type Z3_ast <: unsigned
 .type Z3_bool <: Z3_ast
@@ -62,6 +65,11 @@ Z3_mk_ref , ctx(ctx)
 
 .functor Z3_ast_to_string(Z3_ctx, Z3_ast): symbol
 
+//.type Z3_solver <: unsigned
+//.functor Z3_mk_solver(Z3_ctx) : Z3_solver
+//.functor Z3_check
+
+
 .functor myversion(): symbol
 .functor myctx(): Z3_ctx
 .type Z3_packed <: unsigned
@@ -70,6 +78,14 @@ Z3_mk_ref , ctx(ctx)
 .functor pack2(Z3_ast, Z3_ast) : Z3_packed
 .functor pack3(Z3_ast, Z3_ast) : Z3_packed
 .functor Z3_mk_and2(Z3_ctx, Z3_bool, Z3_bool): Z3_bool
+
+// Hmm. Its a 32 bit int. Bummer
+#define UNSAT 4294967295
+#define UNKNOWN 0
+#define SAT 1
+.type Z3_lbool <: number
+.functor check_sat(Z3_ctx, Z3_ast) : Z3_lbool
+
 .decl test1(x : symbol)
 test1(@Z3_get_full_version()) :- true.
 test1(@Z3_ast_to_string(ctx, @Z3_mk_true(ctx))),
@@ -91,6 +107,17 @@ test2("impl true", tr2) :- ctx = @myctx(), tr = @Z3_mk_true(ctx), tr2 = @Z3_simp
 test2(@Z3_ast_to_string(ctx, tr2), tr2) :- ctx = @myctx(), foo = Z3BOOL("foo"), tr = @Z3_mk_true(ctx), tr2 = @Z3_simplify(ctx, @Z3_mk_or(ctx, 2, @pack2(tr,foo))).
 .output test2(IO=stdout)
 .output test1(IO=stdout)
+.output test3(IO=stdout)
+
+.decl test3(l : symbol, x : number)
+test3("sat", res) :- ctx = @myctx(), tr = @Z3_mk_true(ctx), res = @check_sat(ctx,tr), res = SAT.
+test3("unsat", res) :- ctx = @myctx(), tr = @Z3_mk_false(ctx), res = @check_sat(ctx,tr), res = UNSAT.
+
+/*
+See the thing is if I use anything other than C api, I need to export that code anyway and then write 
+functor bindings anyway.
+It's just easiest this way.
+*/
 
 /*
 So I made a global to pack tuples into.
