@@ -10,11 +10,104 @@ And it may be easier to implement a Pool of contexts later.
 Maybe I should bite the bullet and compile 64 bit mode too.
 */
 
-.pragma "library" "z3"
-.pragma "library" "z3stubs"
-.type z3_ref = [u : unsigned; l : unsigned]
+//.pragma "libraries" "z3"
+//.pragma "libraries" "z3stubs"
+//.type z3_ref = [u : unsigned; l : unsigned]
 
-
+/*
 ctx(ctx) :- ctx = Z3_mk_context().
 
 Z3_mk_ref , ctx(ctx)
+
+*/
+#define Z3CTX @myctx()
+#define Z3BOOL(name) @Z3_mk_const(Z3CTX, @Z3_mk_string_symbol(Z3CTX, name), @Z3_mk_bool_sort(Z3CTX))
+
+#define Z3INT(name) @Z3_mk_const(Z3CTX, @Z3_mk_string_symbol(Z3CTX, name), @Z3_mk_int_sort(Z3CTX))
+#define STRING_OF_Z3AST(ast) @Z3_ast_to_string(Z3CTX, ast)
+//.pragma "libraries" "z3"
+.pragma "libraries" "z3stubs"
+.type Z3_ctx <: unsigned
+.type Z3_ast <: unsigned
+.type Z3_bool <: Z3_ast
+.type Z3_int <: Z3_ast
+.type Z3_symbol <: unsigned
+.type Z3_sort <: unsigned
+// https://z3prover.github.io/api/html/group__capi.html
+.functor Z3_get_full_version(): symbol
+
+.functor Z3_mk_string_symbol(Z3_ctx, symbol): Z3_symbol
+
+.functor Z3_mk_int64(Z3_ctx, number, Z3_sort): Z3_ast
+
+.functor Z3_mk_bool_sort(Z3_ctx): Z3_sort
+.functor Z3_mk_int_sort(Z3_ctx): Z3_sort
+
+.functor Z3_mk_const(Z3_ctx, Z3_symbol, Z3_sort): Z3_ast
+// bool
+.functor Z3_mk_true(Z3_ctx): Z3_bool
+.functor Z3_mk_false(Z3_ctx): Z3_bool
+.functor Z3_mk_eq(Z3_ctx, Z3_ast, Z3_ast): Z3_bool
+
+// Terrible plan
+.functor Z3_mk_and(Z3_ctx, unsigned, Z3_packed): Z3_bool
+
+.functor Z3_mk_or(Z3_ctx, unsigned, Z3_packed): Z3_bool
+
+.functor Z3_mk_implies(Z3_ctx, Z3_bool, Z3_bool): Z3_bool
+.functor Z3_mk_not(Z3_ctx, Z3_bool): Z3_bool
+.functor Z3_mk_ite(Z3_ctx, Z3_bool, Z3_ast, Z3_ast): Z3_ast
+
+.functor Z3_simplify(Z3_ctx, Z3_ast): Z3_ast
+
+.functor Z3_ast_to_string(Z3_ctx, Z3_ast): symbol
+
+.functor myversion(): symbol
+.functor myctx(): Z3_ctx
+.type Z3_packed <: unsigned
+
+.functor pack1(Z3_ast, Z3_ast) : Z3_packed
+.functor pack2(Z3_ast, Z3_ast) : Z3_packed
+.functor pack3(Z3_ast, Z3_ast) : Z3_packed
+.functor Z3_mk_and2(Z3_ctx, Z3_bool, Z3_bool): Z3_bool
+.decl test1(x : symbol)
+test1(@Z3_get_full_version()) :- true.
+test1(@Z3_ast_to_string(ctx, @Z3_mk_true(ctx))),
+test1(@Z3_ast_to_string(ctx, @Z3_mk_false(ctx))),
+test1(STRING_OF_Z3AST(Z3BOOL("foo"))),
+test1(STRING_OF_Z3AST(Z3INT("bar")))
+ :- ctx = @myctx().
+
+//test1(@Z3_ast_to_string(ctx, @Z3_mk_const(ctx, @Z3_mk_string_symbol(ctx, "foo"), @Z3_mk_bool_sort(ctx))))
+//test1(@myversion()) :- true.
+.decl test2(l : symbol, x : unsigned)
+//test2(@myctx()) :- true.
+test2("big", 4294967296).
+test2("biger", 18446744073709551615). // checking that we're in 64 bit.
+
+test2(@Z3_ast_to_string(ctx, tr), tr) :-  ctx = @myctx(), tr = @Z3_mk_true(ctx).
+test2("true2", tr) :-  ctx = @myctx(), tr = @Z3_mk_true(ctx).
+test2("impl true", tr2) :- ctx = @myctx(), tr = @Z3_mk_true(ctx), tr2 = @Z3_simplify(ctx, @Z3_mk_implies(ctx, tr, tr)).
+test2(@Z3_ast_to_string(ctx, tr2), tr2) :- ctx = @myctx(), foo = Z3BOOL("foo"), tr = @Z3_mk_true(ctx), tr2 = @Z3_simplify(ctx, @Z3_mk_or(ctx, 2, @pack2(tr,foo))).
+.output test2(IO=stdout)
+.output test1(IO=stdout)
+
+/*
+So I made a global to pack tuples into.
+ I guarantee this is going to cause problems.
+ Why don't I just make and2 in the helpers file?
+
+*/
+
+/*
+Ok so I didn't need to do dlopen stuff.
+I just needed to put linking ooption in to file
+-lz3. Only on shared command. This is sufficient to also have z3 symbols available for this file.
+readelf -d
+
+http://www.kaizou.org/2015/01/linux-libraries.html better understanding of linking
+dependency are listed in reverse order
+ldd for recursive depndenceis
+
+
+*/
